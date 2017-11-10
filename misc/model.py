@@ -46,32 +46,38 @@ class VGG_B(nn.Module):
 
         if opts.pretrained:
             self.features = net.features
-            # Do not copy last layer for classification
-            self.classifier = [net.classifier[i] \
-                                              for i in range(len(net.classifier)-1)]
         else:
             if opts.init == 'xavier':
                 self.features = nn.Sequential(*(ixvr(net.features[i]) \
                                                 for i in range(len(net.features))))
-                self.classifier = [ixvr(net.classifier[i]) \
-                                                  for i in range(len(net.classifier)-1)]
             else:
                 self.features = nn.Sequential(*(inrml(net.features[i]) \
                                                 for i in range(len(net.features))))
-                self.classifier = [inrml(net.classifier[i]) \
-                                                  for i in range(len(net.classifier)-1)]
-
-        # Add the final classification layer
+        
+        self.classifier = []
+        # Add the FC layers
         if opts.init == 'xavier':
-            self.classifier.append(ixvr(nn.Linear(4096, opts.num_classes)))
+            self.classifier.append(ixvr(nn.Linear(2048, 2048)))
+            self.classifier.append(nn.ReLU(inplace=True))
+            self.classifier.append(nn.Dropout(p=0.5))
+            self.classifier.append(ixvr(nn.Linear(2048, 2048)))
+            self.classifier.append(nn.ReLU(inplace=True))
+            self.classifier.append(nn.Dropout(p=0.5))
+            self.classifier.append(ixvr(nn.Linear(2048, opts.num_classes)))
         else:
-            self.classifier.append(inrml(nn.Linear(4096, opts.num_classes)))
+            self.classifier.append(inrml(nn.Linear(2048, 2048)))
+            self.classifier.append(nn.ReLU(inplace=True))
+            self.classifier.append(nn.Dropout(p=0.5))
+            self.classifier.append(inrml(nn.Linear(2048, 2048)))
+            self.classifier.append(nn.ReLU(inplace=True))
+            self.classifier.append(nn.Dropout(p=0.5))
+            self.classifier.append(inrml(nn.Linear(2048, opts.num_classes)))
         
         self.classifier = nn.Sequential(*self.classifier)
 
     def forward(self, x):
         x = self.features(x)
-        x = x.view(-1, 25088)
+        x = x.view(-1, 2048)
         x = self.classifier(x)
         return x
 
