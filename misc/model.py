@@ -24,25 +24,27 @@ class Net(nn.Module):
         x = self.fc3(x)
         return x
 
-def ixvr(input_layer, bias_val=0):
-    if hasattr(input_layer, 'weight'):
-        nn.init.xavier_normal(input_layer.weight);
-    if hasattr(input_layer, 'bias'):
-        nn.init.constant(input_layer.bias, bias_val);
+def ixvr(input_layer, bias_val=0.1):
+    if not str(type(input_layer)) == "<class 'torch.nn.modules.batchnorm.BatchNorm2d'>":
+        if hasattr(input_layer, 'weight'):
+            nn.init.xavier_normal(input_layer.weight);
+        if hasattr(input_layer, 'bias'):
+            nn.init.constant(input_layer.bias, bias_val);
     return input_layer
 
-def inrml(input_layer, mean=0, std=0.005):
-    if hasattr(input_layer, 'weight'):
-        nn.init.normal(input_layer.weight, mean, std);
-    if hasattr(input_layer, 'bias'):
-        nn.init.constant(input_layer.bias, 1);
+def inrml(input_layer, mean=0, std=0.01):
+    if not str(type(input_layer)) == "<class 'torch.nn.modules.batchnorm.BatchNorm2d'>":
+        if hasattr(input_layer, 'weight'):
+            nn.init.normal(input_layer.weight, mean, std);
+        if hasattr(input_layer, 'bias'):
+            nn.init.constant(input_layer.bias, 0.01);
     return input_layer
 
 class VGG_B(nn.Module):
 
     def __init__(self, opts):
         super(VGG_B, self).__init__()
-        net = models.vgg13(pretrained=opts.pretrained)
+        net = models.vgg13_bn(pretrained=opts.pretrained)
 
         if opts.pretrained:
             self.features = net.features

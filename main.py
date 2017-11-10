@@ -24,10 +24,14 @@ def str2bool(v):
     return v.lower() in ("yes", "true", "t", "1")
 
 def loss_optim(net, lr, momentum):
-	criterion = nn.CrossEntropyLoss()
-	optimizer = optim.Adam(net.parameters(), lr=lr)
-	exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
-	return criterion, optimizer, exp_lr_scheduler
+    criterion = nn.CrossEntropyLoss()
+    list_of_dicts = []
+    list_of_dicts.append({'params': net.features.parameters(), 'lr': lr})
+    list_of_dicts.append({'params': net.classifier.parameters(), 'lr': 0.1*lr})
+
+    optimizer = optim.Adam(list_of_dicts)
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
+    return criterion, optimizer, exp_lr_scheduler
 
 def svhn_label_transform(x):
     if x[0] == 10:
@@ -161,17 +165,17 @@ def train(opts):
 
     dummy_output = net(dummy_input)
     writer.add_graph(net, dummy_output)
-
+    
+    iters = 0
     for epoch in range(opts.epochs):  # loop over the dataset multiple times
         running_loss = 0.0
         exp_lr_scheduler.step()
-        
+            
         for i, data in enumerate(trainloader, 0):
             # get the inputs
             inputs, labels = data
             # wrap them in Variable
             inputs, labels = Variable(inputs), Variable(labels)
-
             # convert to cuda if available
             if opts.cuda:
                 inputs = inputs.cuda()
@@ -190,13 +194,23 @@ def train(opts):
             loss.backward()
             optimizer.step()
 
+            grad_of_params = {}
+            for name, parameter in net.named_parameters():
+                grad_of_params[name] = parameter.grad
+            
             # print statistics
             running_loss += loss.data[0]
-            if (i+1) % 100 == 0:    # print every 2000 mini-batches
+            if (i+1) % 50 == 0:    # print every 2000 mini-batches
                 print('[%d, %5d] loss: %.3f' %
-                    (epoch + 1, i + 1, running_loss / 100))
+                    (epoch + 1, i + 1, running_loss / 50))
+
+                writer.add_scalar('data/train_loss', running_loss/50, iters)
                 running_loss = 0.0
-        
+
+            iters += 1
+            for name, param in net.named_parameters():
+                writer.add_histogram(name, param.clone().cpu().data.numpy(), iters)
+
         train_accuracy = evaluate(net, trainloader, opts, False)
         valid_accuracy = evaluate(net, validloader, opts, False)
 
