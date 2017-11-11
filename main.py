@@ -11,6 +11,7 @@ import torchvision.transforms as transforms
 from torchvision.datasets import ImageFolder
 
 from misc.model import *
+from misc.utils import *
 from tensorboardX import SummaryWriter
 
 ########################################################################
@@ -38,85 +39,6 @@ def svhn_label_transform(x):
         x[0] = 0
     return x
 
-def get_dataloaders(opts):
-    if opts.dataset == 'cifar':
-        transform = transforms.Compose(
-                        [transforms.Scale((64, 64)),
-                         transforms.ToTensor(),
-                         transforms.Normalize(mean = opts.mean, std = opts.std)])
-
-        trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
-                                        download=True, transform=transform)
-        trainloader = DataLoader(trainset, batch_size=4,
-                                          shuffle=True, num_workers=2)
-
-        testset = torchvision.datasets.CIFAR10(root='./data', train=False,
-                                       download=True, transform=transform)
-        testloader = DataLoader(testset, batch_size=4,
-                                         shuffle=False, num_workers=2)
-        return trainloader, testloader
-
-    elif opts.dataset == 'svhn':
-        train_transform = transforms.Compose(
-                          [transforms.Scale((80, 80)),
-                           transforms.RandomSizedCrop(64),
-                           transforms.RandomHorizontalFlip(),
-                           transforms.ToTensor(), 
-                           transforms.Normalize(mean = opts.mean, std = opts.std)])
-
-        valid_transform = transforms.Compose(
-						  [transforms.Scale((80, 80)),
-                           transforms.CenterCrop(64),
-						   transforms.ToTensor(),
-						   transforms.Normalize(mean = opts.mean, std = opts.std)])
-
-        test_transform = transforms.Compose(
-                        [transforms.Scale((80, 80)),
-                         transforms.CenterCrop(64),
-                         transforms.ToTensor(),
-                         transforms.Normalize(mean = opts.mean, std = opts.std)])
-
-        trainset = ImageFolder(root=os.path.join(opts.dataset_path,'train'), 
-                               transform=train_transform)
-        trainloader = DataLoader(trainset, batch_size=opts.batch_size,
-                                 shuffle=True, num_workers=opts.num_workers)
-
-        validset = ImageFolder(root=os.path.join(opts.dataset_path, 'val'),
-                               transform=valid_transform)
-        validloader = DataLoader(validset, batch_size=opts.batch_size,
-                                 shuffle=False, num_workers=opts.num_workers)
-        #testset = ImageFolder(root=os.path.join(opts.dataset_path, 'test'),
-        #                      transform=test_transform)
-        #testloader = DataLoader(testset, batch_size=opts.batch_size,
-        #                        shuffle=False, num_workers=opts.num_workers)
-
-        return trainloader, validloader#, testloader
-
-    elif opts.dataset == 'sketch':
-        transform = transforms.Compose(
-                        [transforms.Scale((64, 64)),
-                         transforms.ToTensor()])
-
-        trainset = torchvision.datasets.ImageFolder(root='./data/sketch', transform=transform)
-        trainloader = DataLoader(trainset, batch_size=4,
-                                          shuffle=True, num_workers=2)
-
-        return trainloader, None
-	
-    elif opts.dataset == 'caltech':
-        transform = transforms.Compose(
-                        [transforms.Scale((64, 64)),
-                         transforms.ToTensor()])
-
-        trainset = torchvision.datasets.ImageFolder(root='./data/256_ObjectCategories', transform=transform)
-        trainloader = DataLoader(trainset, batch_size=4,
-                                          shuffle=True, num_workers=2)
-
-        return trainloader, None
-    
-    else:
-        raise(NameError('Dataset %s does not exist!'%(opts.dataset)))
-
 def evaluate(net, dataloader, opts, print_result=True):
     correct = 0
     total = 0 
@@ -133,7 +55,7 @@ def evaluate(net, dataloader, opts, print_result=True):
         _, predicted = torch.max(outputs.data, 1)
         total += labels.size(0)
         correct += (predicted == labels).sum()
-
+    
     accuracy = 100 * float(correct) / float(total)
     if print_result:
         print('==> Accuracy: %f %% ' % (100 * float(correct) / float(total)))
@@ -148,6 +70,10 @@ def train(opts):
     elif opts.dataset == 'caltech':
         opts.num_classes = 257
     net = VGG_B(opts)
+    if not opts.load_model == '':
+        chkpt = torch.load(opts.load_model)
+        net.load_state_dict(chkpt)
+
     trainloader, validloader = get_dataloaders(opts)
 
     criterion, optimizer, exp_lr_scheduler = loss_optim(net, opts.lr, opts.momentum)
@@ -241,6 +167,7 @@ if __name__ == '__main__':
     parser.add_argument('--pretrained', type=str2bool, default=True, help='use imagenet pretrained weights?')
     parser.add_argument('--cuda', type=str2bool, default=True)
     parser.add_argument('--save_path', type=str, default='')
+    parser.add_argument('--load_model', type=str, default='')
 
     opts = parser.parse_args()
     opts.mean = [0.485, 0.456, 0.406]
