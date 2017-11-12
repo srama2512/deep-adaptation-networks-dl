@@ -7,7 +7,7 @@ import torchvision.transforms as transforms
 from torchvision.datasets import ImageFolder
 
 def get_dataloaders(opts):
-    if opts.dataset == 'svhn' or opts.dataset == 'cifar':
+    if opts.dataset == 'svhn' or opts.dataset == 'cifar' or opts.dataset == 'sketch' or opts.dataset == 'caltech':
         train_transform = transforms.Compose(
                           [transforms.Scale((72, 72)),
                            transforms.RandomSizedCrop(64),
@@ -42,28 +42,6 @@ def get_dataloaders(opts):
         #                        shuffle=False, num_workers=opts.num_workers)
 
         return trainloader, validloader#, testloader
-
-    elif opts.dataset == 'sketch':
-        transform = transforms.Compose(
-                        [transforms.Scale((64, 64)),
-                         transforms.ToTensor()])
-
-        trainset = torchvision.datasets.ImageFolder(root='./data/sketch', transform=transform)
-        trainloader = DataLoader(trainset, batch_size=4,
-                                          shuffle=True, num_workers=2)
-
-        return trainloader, None
-	
-    elif opts.dataset == 'caltech':
-        transform = transforms.Compose(
-                        [transforms.Scale((64, 64)),
-                         transforms.ToTensor()])
-
-        trainset = torchvision.datasets.ImageFolder(root='./data/256_ObjectCategories', transform=transform)
-        trainloader = DataLoader(trainset, batch_size=4,
-                                          shuffle=True, num_workers=2)
-
-        return trainloader, None
     
     else:
         raise(NameError('Dataset %s does not exist!'%(opts.dataset)))
