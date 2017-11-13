@@ -36,12 +36,12 @@ def get_dataloaders(opts):
                                transform=valid_transform)
         validloader = DataLoader(validset, batch_size=opts.batch_size,
                                  shuffle=False, num_workers=opts.num_workers)
-        #testset = ImageFolder(root=os.path.join(opts.dataset_path, 'test'),
-        #                      transform=test_transform)
-        #testloader = DataLoader(testset, batch_size=opts.batch_size,
-        #                        shuffle=False, num_workers=opts.num_workers)
+        testset = ImageFolder(root=os.path.join(opts.dataset_path, 'test'),
+                              transform=test_transform)
+        testloader = DataLoader(testset, batch_size=opts.batch_size,
+                                shuffle=False, num_workers=opts.num_workers)
 
-        return trainloader, validloader#, testloader
+        return trainloader, validloader, testloader
 
     elif opts.dataset == 'sketch':
         transform = transforms.Compose(

@@ -14,13 +14,6 @@ from misc.model import *
 from misc.utils import *
 from tensorboardX import SummaryWriter
 
-########################################################################
-# The output of torchvision datasets are PILImage images of range [0, 1].
-# We transform them to Tensors of normalized range [-1, 1]
-
-# classes = ('plane', 'car', 'bird', 'cat',
-#            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-
 def str2bool(v):
     return v.lower() in ("yes", "true", "t", "1")
 
