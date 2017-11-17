@@ -7,7 +7,7 @@ import torchvision.transforms as transforms
 from torchvision.datasets import ImageFolder
 
 def get_dataloaders(opts):
-    if opts.dataset == 'svhn' or opts.dataset == 'cifar' or opts.dataset == 'sketch' or opts.dataset == 'caltech':
+    if opts.dataset == 'svhn' or opts.dataset == 'cifar' or opts.dataset == 'sketches' or opts.dataset == 'caltech':
         train_transform = transforms.Compose(
                           [transforms.Scale((72, 72)),
                            transforms.RandomSizedCrop(64),

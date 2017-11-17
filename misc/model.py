@@ -45,7 +45,6 @@ class VGG_B(nn.Module):
     def __init__(self, opts):
         super(VGG_B, self).__init__()
         net = models.vgg13_bn(pretrained=opts.pretrained)
-
         if opts.pretrained:
             self.features = net.features
         else:
@@ -57,7 +56,7 @@ class VGG_B(nn.Module):
                                                 for i in range(len(net.features))))
         
         self.classifier = []
-        # Add the FC layers
+        #Add the FC layers
         if opts.init == 'xavier':
             self.classifier.append(ixvr(nn.Linear(2048, 2048)))
             self.classifier.append(nn.ReLU(inplace=True))
@@ -94,10 +93,9 @@ class DAN_Module(nn.Module):
         super(DAN_Module, self).__init__()
         params = list(nn_module.parameters())
         w_size = params[0].size()
-        # Num input channels * filter width * filter height
-        nout = w_size[1]*w_size[2]*w_size[3]
+        nout = w_size[0]
         self.weight = nn.Parameter(torch.randn(nout, nout)*0.01)
-        self.bias = nn.Parameter(torch.randn(w_size[0])*0.01)
+        self.bias = nn.Parameter(torch.randn(nout)*0.01)
         self.stride = nn_module.stride
         self.padding = nn_module.padding
         filter_shape = w_size
@@ -106,7 +104,7 @@ class DAN_Module(nn.Module):
         self.constant_weight = Variable(params[0].data.view(self.filter_shape[0], -1), requires_grad=False)
 
     def forward(self, x):
-        x = F.conv2d(x, weight=torch.matmul(self.constant_weight, self.weight).view(-1, *self.filter_shape[1:]), \
+        x = F.conv2d(x, weight=torch.matmul(self.weight, self.constant_weight).view(-1, *self.filter_shape[1:]), \
                              bias=self.bias, stride=self.stride, padding=self.padding)
         return x
 
@@ -127,12 +125,16 @@ class DAN_Model(nn.Module):
         self.features = nn.Sequential(*self.features)
         # Randomly initialize the fully connected layers
         if opts.init == 'xavier':
-            self.classifier = nn.Sequential(*(ixvr(copy.deepcopy(base_net.classifier[i])) \
-                                              for i in range(len(base_net.classifier))))
+            self.classifier = [ixvr(copy.deepcopy(base_net.classifier[i])) \
+                                              for i in range(len(base_net.classifier)-1)]
+            self.classifier.append(ixvr(nn.Linear(base_net.classifier[-1].weight.size(0), opts.num_classes)))
         else:
-            self.classifier = nn.Sequential(*(inrml(copy.deepcopy(base_net.classifier[i])) \
-                                              for i in range(len(base_net.classifier))))
-    
+            self.classifier = [inrml(copy.deepcopy(base_net.classifier[i])) \
+                                              for i in range(len(base_net.classifier)-1)]
+            self.classifier.append(inrml(nn.Linear(base_net.classifier[-1].weight.size(0), opts.num_classes)))      
+
+        self.classifier = nn.Sequential(*self.classifier)
+
     def forward(self, x):
         x = self.features(x)
         x = x.view(-1, self.classifier[0].in_features)

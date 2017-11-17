@@ -25,7 +25,7 @@ def svhn_label_transform(x):
 def evaluate(opts, print_result=True):
     if opts.dataset == 'cifar' or opts.dataset == 'svhn':
         opts.num_classes = 10
-    elif opts.dataset == 'sketch':
+    elif opts.dataset == 'sketches':
         opts.num_classes = 250
     elif opts.dataset == 'caltech':
         opts.num_classes = 257

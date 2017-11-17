@@ -16,15 +16,15 @@ from tensorboardX import SummaryWriter
 
 def str2bool(v):
     return v.lower() in ("yes", "true", "t", "1")
-
-def loss_optim(net, lr, momentum):
+            
+def loss_optim(net, opts):
     criterion = nn.CrossEntropyLoss()
     list_of_dicts = []
-    list_of_dicts.append({'params': net.features.parameters(), 'lr': lr})
-    list_of_dicts.append({'params': net.classifier.parameters(), 'lr': 0.1*lr})
+    list_of_dicts.append({'params': net.features.parameters(), 'lr': opts.lr})
+    list_of_dicts.append({'params': net.classifier.parameters(), 'lr': 0.1*opts.lr})
 
     optimizer = optim.Adam(list_of_dicts)
-    exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=opts.lr_step_size, gamma=0.5)
     return criterion, optimizer, exp_lr_scheduler
 
 def svhn_label_transform(x):
@@ -58,7 +58,7 @@ def evaluate(net, dataloader, opts, print_result=True):
 def train(opts):
     if opts.dataset == 'cifar' or opts.dataset == 'svhn':
         opts.num_classes = 10
-    elif opts.dataset == 'sketch':
+    elif opts.dataset == 'sketches':
         opts.num_classes = 250
     elif opts.dataset == 'caltech':
         opts.num_classes = 257
@@ -67,9 +67,9 @@ def train(opts):
         chkpt = torch.load(opts.load_model)
         net.load_state_dict(chkpt)
 
-    trainloader, validloader = get_dataloaders(opts)
+    trainloader, validloader, _ = get_dataloaders(opts)
 
-    criterion, optimizer, exp_lr_scheduler = loss_optim(net, opts.lr, opts.momentum)
+    criterion, optimizer, exp_lr_scheduler = loss_optim(net, opts)
 
     net.train()
     best_valid_accuracy = 0
@@ -137,7 +137,6 @@ def train(opts):
 
         writer.add_scalar('data/train_accuracy', train_accuracy, epoch)
         writer.add_scalar('data/valid_accuracy', valid_accuracy, epoch)
-        writer.add_scalar('data/train_loss', running_loss, epoch)
 
         if best_valid_accuracy <= valid_accuracy:
             best_valid_accuracy = valid_accuracy
@@ -161,7 +160,7 @@ if __name__ == '__main__':
     parser.add_argument('--cuda', type=str2bool, default=True)
     parser.add_argument('--save_path', type=str, default='')
     parser.add_argument('--load_model', type=str, default='')
-
+    parser.add_argument('--lr_step_size', type=int, default=10, help='step size for LR scheduler')
     opts = parser.parse_args()
     opts.mean = [0.485, 0.456, 0.406]
     opts.std = [0.229, 0.224, 0.225]
