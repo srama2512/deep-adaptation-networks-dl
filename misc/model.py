@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import torch
 import copy
+import pdb
 
 class Net(nn.Module):
     def __init__(self, opts):
@@ -101,7 +102,20 @@ class DAN_Module(nn.Module):
         filter_shape = w_size
         self.filter_shape = [filter_shape[0], filter_shape[1], filter_shape[2], filter_shape[3]]
 
-        self.constant_weight = Variable(params[0].data.view(self.filter_shape[0], -1), requires_grad=False)
+        #self.constant_weight = Variable(params[0].data.view(self.filter_shape[0], -1), requires_grad=False)
+        self.register_buffer('constant_weight_buffer', params[0].data.view(self.filter_shape[0], -1))
+        self.constant_weight = Variable(self.constant_weight_buffer, requires_grad=False)
+
+    # Redefine apply to modify constant_weight as well
+    def _apply(self, fn):
+        self = super(DAN_Module, self)._apply(fn)
+        self.constant_weight = fn(self.constant_weight)
+        return self
+
+    # Redefine load_state_dict to re-assign constant_weight as well
+    def load_state_dict(self, state_dict, strict=True):
+        super(DAN_Module, self).load_state_dict(state_dict, strict)
+        self.constant_weight = Variable(self.constant_weight_buffer, requires_grad=False)
 
     def forward(self, x):
         x = F.conv2d(x, weight=torch.matmul(self.weight, self.constant_weight).view(-1, *self.filter_shape[1:]), \
@@ -127,11 +141,11 @@ class DAN_Model(nn.Module):
         if opts.init == 'xavier':
             self.classifier = [ixvr(copy.deepcopy(base_net.classifier[i])) \
                                               for i in range(len(base_net.classifier)-1)]
-            self.classifier.append(ixvr(nn.Linear(base_net.classifier[-1].weight.size(0), opts.num_classes)))
+            self.classifier.append(ixvr(nn.Linear(base_net.classifier[-1].weight.size(1), opts.num_classes)))
         else:
             self.classifier = [inrml(copy.deepcopy(base_net.classifier[i])) \
                                               for i in range(len(base_net.classifier)-1)]
-            self.classifier.append(inrml(nn.Linear(base_net.classifier[-1].weight.size(0), opts.num_classes)))      
+            self.classifier.append(inrml(nn.Linear(base_net.classifier[-1].weight.size(1), opts.num_classes)))      
 
         self.classifier = nn.Sequential(*self.classifier)
 

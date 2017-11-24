@@ -5,6 +5,7 @@ import torch
 import argparse
 import torchvision
 import torch.optim as optim
+import torchvision.models as models
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
@@ -20,8 +21,8 @@ def str2bool(v):
 def loss_optim(net, opts):
     criterion = nn.CrossEntropyLoss()
     list_of_dicts = []
-    list_of_dicts.append({'params': net.features.parameters(), 'lr': opts.lr_scale * opts.lr, 'weight_decay': opts.weight_decay})
-    list_of_dicts.append({'params': net.classifier.parameters(), 'lr': opts.lr, 'weight_decay': opts.weight_decay})
+    list_of_dicts.append({'params': net.features.parameters(), 'lr': opts.lr})
+    list_of_dicts.append({'params': net.classifier.parameters(), 'lr': 0.1*opts.lr})
 
     optimizer = optim.Adam(list_of_dicts)
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=opts.lr_step_size, gamma=0.5)
@@ -55,14 +56,37 @@ def evaluate(net, dataloader, opts, print_result=True):
     net.train()
     return accuracy
 
-def train(opts):
+def classes_assignment(dataset_name):
     if opts.dataset == 'cifar' or opts.dataset == 'svhn':
-        opts.num_classes = 10
+        num_classes = 10
     elif opts.dataset == 'sketches':
-        opts.num_classes = 250
+        num_classes = 250
     elif opts.dataset == 'caltech':
-        opts.num_classes = 257
-    net = VGG_B(opts)
+        num_classes = 257
+    return num_classes
+
+def train(opts):
+
+    opts.num_classes = classes_assignment(opts.dataset)
+
+    base_classes = classes_assignment(opts.base_network)
+    temp_opts = argparse.Namespace()
+    temp_opts.num_classes = base_classes
+    temp_opts.init = 'xavier' # Dummy, does not matter
+
+    if opts.base_network == 'imagenet':
+        temp_opts.pretrained = True
+    else:
+        temp_opts.pretrained = False
+    
+    base_net = VGG_B(temp_opts)
+    if opts.base_network != 'imagenet' and opts.base_network != 'noise':
+        base_chkpt = torch.load(opts.base_network_path)
+        base_net.load_state_dict(base_chkpt)
+   
+    opts.base_net = base_net 
+    net = DAN_Model(opts)
+    
     if not opts.load_model == '':
         chkpt = torch.load(opts.load_model)
         net.load_state_dict(chkpt)
@@ -150,20 +174,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--init', type=str, default='xavier')
     parser.add_argument('--dataset', type=str, default='cifar')
-    parser.add_argument('--dataset_path', type=str, default='/work/05147/srama/shareddir/data/svhn')
+    parser.add_argument('--dataset_path', type=str, default='/work/05147/srama/shareddir/data/cifar-10')
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--batch_size', type=int, default=100)
     parser.add_argument('--num_workers', type=int, default=2)
-    parser.add_argument('--pretrained', type=str2bool, default=True, help='use imagenet pretrained weights?')
+    parser.add_argument('--base_network_path', type=str, default='')
+    parser.add_argument('--base_network', type=str, required=True, help='[imagenet | noise | caltech | sketches]')
     parser.add_argument('--cuda', type=str2bool, default=True)
     parser.add_argument('--save_path', type=str, default='')
     parser.add_argument('--load_model', type=str, default='')
     parser.add_argument('--lr_step_size', type=int, default=10, help='step size for LR scheduler')
-    parser.add_argument('--weight_decay', type=float, default=0.0)
-    parser.add_argument('--lr_scale', type=float, default=0.1)
-
     opts = parser.parse_args()
     opts.mean = [0.485, 0.456, 0.406]
     opts.std = [0.229, 0.224, 0.225]
