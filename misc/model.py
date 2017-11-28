@@ -55,24 +55,22 @@ class VGG_B(nn.Module):
             else:
                 self.features = nn.Sequential(*(inrml(net.features[i]) \
                                                 for i in range(len(net.features))))
-        
+         
         self.classifier = []
         #Add the FC layers
         if opts.init == 'xavier':
-            self.classifier.append(ixvr(nn.Linear(2048, 2048)))
-            self.classifier.append(nn.ReLU(inplace=True))
-            self.classifier.append(nn.Dropout(p=0.5))
-            self.classifier.append(ixvr(nn.Linear(2048, 2048)))
-            self.classifier.append(nn.ReLU(inplace=True))
-            self.classifier.append(nn.Dropout(p=0.5))
+            for i in range(opts.num_fc-1):
+                self.classifier.append(ixvr(nn.Linear(2048, 2048)))
+                self.classifier.append(nn.ReLU(inplace=True))
+                self.classifier.append(nn.Dropout(p=0.5))
+
             self.classifier.append(ixvr(nn.Linear(2048, opts.num_classes)))
         else:
-            self.classifier.append(inrml(nn.Linear(2048, 2048)))
-            self.classifier.append(nn.ReLU(inplace=True))
-            self.classifier.append(nn.Dropout(p=0.5))
-            self.classifier.append(inrml(nn.Linear(2048, 2048)))
-            self.classifier.append(nn.ReLU(inplace=True))
-            self.classifier.append(nn.Dropout(p=0.5))
+            for i in range(opts.num_fc-1):
+                self.classifier.append(inrml(nn.Linear(2048, 2048)))
+                self.classifier.append(nn.ReLU(inplace=True))
+                self.classifier.append(nn.Dropout(p=0.5))
+           
             self.classifier.append(inrml(nn.Linear(2048, opts.num_classes)))
         
         self.classifier = nn.Sequential(*self.classifier)
@@ -109,7 +107,7 @@ class DAN_Module(nn.Module):
     # Redefine apply to modify constant_weight as well
     def _apply(self, fn):
         self = super(DAN_Module, self)._apply(fn)
-        self.constant_weight = fn(self.constant_weight)
+        self.constant_weight = Variable(self.constant_weight_buffer, requires_grad=False)#fn(self.constant_weight)
         return self
 
     # Redefine load_state_dict to re-assign constant_weight as well
@@ -133,6 +131,9 @@ class DAN_Model(nn.Module):
         for layer in base_net.features:
             if isinstance(layer, torch.nn.Conv2d):
                 self.features.append(DAN_Module(layer))
+            elif isinstance(layer, torch.nn.BatchNorm2d) or isinstance(layer, torch.nn.BatchNorm1d):
+                layer.reset_parameters()
+                self.features.append(layer)
             else:
                 self.features.append(layer)
         

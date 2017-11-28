@@ -1,6 +1,7 @@
 import os
 import pdb
 import json
+import math
 import torch
 import argparse
 import torchvision
@@ -43,30 +44,23 @@ def evaluate(opts, print_result=True):
     else:
         raise ValueError('Enter a valid model path!')
 
-    trainloader, validloader, testloader = get_dataloaders(opts)
-    
-    if opts.cuda:
-        net = net.cuda()
-
-    correct = 0
-    total = 0 
-    net.eval()
-    for data in testloader:
-        images, labels = data
-        if opts.cuda:
-            images = images.cuda()
-            labels = labels.cuda()
-
-        images = Variable(images)
-
-        outputs = net(images)
-        _, predicted = torch.max(outputs.data, 1)
-        total += labels.size(0)
-        correct += (predicted == labels).sum()
-    
-    accuracy = 100 * float(correct) / float(total)
-    if print_result:
-        print('==> Accuracy: %f %% ' % (accuracy))
+    if opts.base_network == 'imagenet':
+        for i in range(len(net.features)):
+            if isinstance(net.features[i], DAN_Module):
+                const_weight = net.features[i].constant_weight_buffer.view(net.features[i].filter_shape)
+                base_weight = base_net.features[i].weight.data
+                assert((const_weight - base_weight).sum() == 0)
+        print('Successfully checked!')
+    elif opts.base_network == 'noise':
+        for i in range(len(net.features)):
+            if isinstance(net.features[i], DAN_Module):
+                const_weight = net.features[i].constant_weight_buffer.view(net.features[i].filter_shape)
+                fin, fout = nn.init._calculate_fan_in_and_fan_out(const_weight)
+                true_std = math.sqrt(2.0/(fin+fout))
+                curr_std = const_weight.std()
+                assert abs(true_std - curr_std) < true_std/20
+        print('Successfully checked!')
+    return net, base_net
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -78,9 +72,11 @@ if __name__ == '__main__':
     parser.add_argument('--cuda', type=str2bool, default=True)
     parser.add_argument('--load_model', type=str, default='')
     parser.add_argument('--num_fc', type=int, default=3)
+    parser.add_argument('--base_network', type=str, default='imagenet')
+    parser.add_argument('--base_network_path', type=str, default='')
 
     opts = parser.parse_args()
     opts.mean = [0.485, 0.456, 0.406]
     opts.std = [0.229, 0.224, 0.225]
 
-    evaluate(opts)
+    net, base_net = evaluate(opts)

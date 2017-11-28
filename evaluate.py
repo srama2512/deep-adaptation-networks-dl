@@ -69,6 +69,7 @@ if __name__ == '__main__':
     parser.add_argument('--pretrained', type=str2bool, default=True, help='use imagenet pretrained weights?')
     parser.add_argument('--cuda', type=str2bool, default=True)
     parser.add_argument('--load_model', type=str, default='')
+    parser.add_argument('--num_fc', type=int, default=3)
 
     opts = parser.parse_args()
     opts.mean = [0.485, 0.456, 0.406]

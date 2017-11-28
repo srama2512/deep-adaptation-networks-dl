@@ -73,12 +73,12 @@ def train(opts):
     temp_opts = argparse.Namespace()
     temp_opts.num_classes = base_classes
     temp_opts.init = 'xavier' # Dummy, does not matter
+    temp_opts.num_fc = opts.num_fc
 
     if opts.base_network == 'imagenet':
         temp_opts.pretrained = True
     else:
         temp_opts.pretrained = False
-    
     base_net = VGG_B(temp_opts)
     if opts.base_network != 'imagenet' and opts.base_network != 'noise':
         base_chkpt = torch.load(opts.base_network_path)
@@ -151,8 +151,9 @@ def train(opts):
                 running_loss = 0.0
 
             iters += 1
-            for name, param in net.named_parameters():
-                writer.add_histogram(name, param.clone().cpu().data.numpy(), iters)
+        
+        for name, param in net.named_parameters():
+            writer.add_histogram(name, param.clone().cpu().data.numpy(), iters)
 
         train_accuracy = evaluate(net, trainloader, opts, False)
         valid_accuracy = evaluate(net, validloader, opts, False)
@@ -186,6 +187,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_path', type=str, default='')
     parser.add_argument('--load_model', type=str, default='')
     parser.add_argument('--lr_step_size', type=int, default=10, help='step size for LR scheduler')
+    parser.add_argument('--num_fc', type=int, default=3, help='number of FC layers in base network')
     opts = parser.parse_args()
     opts.mean = [0.485, 0.456, 0.406]
     opts.std = [0.229, 0.224, 0.225]

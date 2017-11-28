@@ -127,12 +127,13 @@ def train(opts):
                 running_loss = 0.0
 
             iters += 1
-            for name, param in net.named_parameters():
-                writer.add_histogram(name, param.clone().cpu().data.numpy(), iters)
 
         train_accuracy = evaluate(net, trainloader, opts, False)
         valid_accuracy = evaluate(net, validloader, opts, False)
 
+        for name, param in net.named_parameters():
+            writer.add_histogram(name, param.clone().cpu().data.numpy(), iters)
+        
         print('===> Epoch: %3d,     Train Accuracy: %.4f,     Valid Accuracy: %.4f'%(epoch, train_accuracy, valid_accuracy))
 
         writer.add_scalar('data/train_accuracy', train_accuracy, epoch)
@@ -163,6 +164,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr_step_size', type=int, default=10, help='step size for LR scheduler')
     parser.add_argument('--weight_decay', type=float, default=0.0)
     parser.add_argument('--lr_scale', type=float, default=0.1)
+    parser.add_argument('--num_fc', type=int, default=3, help='number of FC layers to add to the network')
 
     opts = parser.parse_args()
     opts.mean = [0.485, 0.456, 0.406]
