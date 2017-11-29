@@ -1,10 +1,21 @@
 import os
+import torch
+import random
 import torchvision
 import torch.optim as optim
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 from torchvision.datasets import ImageFolder
+import random
+import numpy as np
+
+#random.seed(123)
+#np.random.seed(123)
+#torch.manual_seed(123)
+#torch.cuda.manual_seed_all(123)
+#random.seed(123)
+#torch.manual_seed(123)
 
 def get_dataloaders(opts):
     if opts.dataset == 'svhn' or opts.dataset == 'cifar' or opts.dataset == 'sketches' or opts.dataset == 'caltech':

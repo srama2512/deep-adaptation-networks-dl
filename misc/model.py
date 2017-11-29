@@ -5,6 +5,13 @@ import torch.nn as nn
 import torch
 import copy
 import pdb
+import random
+import numpy as np
+
+#random.seed(123)
+#np.random.seed(123)
+#torch.manual_seed(123)
+#torch.cuda.manual_seed_all(123)
 
 class Net(nn.Module):
     def __init__(self, opts):
@@ -107,7 +114,8 @@ class DAN_Module(nn.Module):
     # Redefine apply to modify constant_weight as well
     def _apply(self, fn):
         self = super(DAN_Module, self)._apply(fn)
-        self.constant_weight = Variable(self.constant_weight_buffer, requires_grad=False)#fn(self.constant_weight)
+        self.constant_weight = Variable(self.constant_weight_buffer, requires_grad=False)
+        self.constant_weight = fn(self.constant_weight)
         return self
 
     # Redefine load_state_dict to re-assign constant_weight as well
@@ -116,6 +124,7 @@ class DAN_Module(nn.Module):
         self.constant_weight = Variable(self.constant_weight_buffer, requires_grad=False)
 
     def forward(self, x):
+        #constant_weight = Variable(self.constant_weight_buffer, requires_grad=False)
         x = F.conv2d(x, weight=torch.matmul(self.weight, self.constant_weight).view(-1, *self.filter_shape[1:]), \
                              bias=self.bias, stride=self.stride, padding=self.padding)
         return x

@@ -2,6 +2,7 @@ import os
 import pdb
 import json
 import torch
+import random
 import argparse
 import torchvision
 import torch.optim as optim
@@ -10,6 +11,7 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 from torchvision.datasets import ImageFolder
+import numpy as np
 
 from misc.model import *
 from misc.utils import *
@@ -74,11 +76,13 @@ def train(opts):
     temp_opts.num_classes = base_classes
     temp_opts.init = 'xavier' # Dummy, does not matter
     temp_opts.num_fc = opts.num_fc
-
+    
     if opts.base_network == 'imagenet':
         temp_opts.pretrained = True
     else:
         temp_opts.pretrained = False
+
+    pdb.set_trace()
     base_net = VGG_B(temp_opts)
     if opts.base_network != 'imagenet' and opts.base_network != 'noise':
         base_chkpt = torch.load(opts.base_network_path)
@@ -180,15 +184,24 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--batch_size', type=int, default=100)
-    parser.add_argument('--num_workers', type=int, default=2)
+    parser.add_argument('--num_workers', type=int, default=0)
     parser.add_argument('--base_network_path', type=str, default='')
     parser.add_argument('--base_network', type=str, required=True, help='[imagenet | noise | caltech | sketches]')
     parser.add_argument('--cuda', type=str2bool, default=True)
     parser.add_argument('--save_path', type=str, default='')
     parser.add_argument('--load_model', type=str, default='')
     parser.add_argument('--lr_step_size', type=int, default=10, help='step size for LR scheduler')
+    parser.add_argument('--seed', type=int, default=123)
     parser.add_argument('--num_fc', type=int, default=3, help='number of FC layers in base network')
     opts = parser.parse_args()
+    
+    torch.backends.cudnn.enabled = False
+
+    random.seed(opts.seed)
+    np.random.seed(opts.seed)
+    torch.manual_seed(opts.seed)
+    torch.cuda.manual_seed_all(opts.seed)
+
     opts.mean = [0.485, 0.456, 0.406]
     opts.std = [0.229, 0.224, 0.225]
 
