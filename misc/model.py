@@ -95,12 +95,14 @@ class DAN_Module(nn.Module):
     weights as a linear combination of the weights from the Conv2d
     module. The biases are initialized randomly.
     """
-    def __init__(self, nn_module):
+    def __init__(self, nn_module, diag_init):
         super(DAN_Module, self).__init__()
         params = list(nn_module.parameters())
         w_size = params[0].size()
         nout = w_size[0]
         self.weight = nn.Parameter(torch.randn(nout, nout)*0.01)
+        if diag_init:
+            nn.init.eye(self.weight)
         self.bias = nn.Parameter(torch.randn(nout)*0.01)
         self.stride = nn_module.stride
         self.padding = nn_module.padding
@@ -139,7 +141,7 @@ class DAN_Model(nn.Module):
         # Assuming that the base_net has features and classifier separately
         for layer in base_net.features:
             if isinstance(layer, torch.nn.Conv2d):
-                self.features.append(DAN_Module(layer))
+                self.features.append(DAN_Module(layer, opts.diag_init))
             elif isinstance(layer, torch.nn.BatchNorm2d) or isinstance(layer, torch.nn.BatchNorm1d):
                 layer.reset_parameters()
                 self.features.append(layer)

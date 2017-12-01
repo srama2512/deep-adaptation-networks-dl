@@ -193,6 +193,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr_step_size', type=int, default=10, help='step size for LR scheduler')
     parser.add_argument('--seed', type=int, default=123)
     parser.add_argument('--num_fc', type=int, default=3, help='number of FC layers in base network')
+    parser.add_argument('--diag_init', type=str2bool, default=False)
     opts = parser.parse_args()
     
     torch.backends.cudnn.enabled = False
